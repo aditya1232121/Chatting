@@ -1,13 +1,15 @@
 import multer from "multer";
 
+// ✅ Store files in memory (not disk) for direct Cloudinary upload
+const storage = multer.memoryStorage();
+
 const multerUpload = multer({
-  limits: {
-    fileSize: 1024 * 1024 * 5,
-  },
+  storage,
+  limits: { fileSize: 1024 * 1024 * 5 }, // 5MB max
 });
 
-const singleAvatar = multerUpload.single("avatar");
+// ✅ Single file upload (for avatar)
+export const singleAvatar = multerUpload.single("avatar");
 
-const attachmentsMulter = multerUpload.array("files", 5);
-
-export { singleAvatar, attachmentsMulter };
+// ✅ Multiple file upload (for chat attachments)
+export const attachmentsMulter = multerUpload.array("files", 5);

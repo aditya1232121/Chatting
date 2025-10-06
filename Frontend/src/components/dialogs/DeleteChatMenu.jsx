@@ -1,93 +1,138 @@
-import { Menu, Stack, Typography } from "@mui/material";
-import React, { useEffect } from "react";
-import { useSelector } from "react-redux";
-import { setIsDeleteMenu } from "../../redux/reducers/misc";
+import { ListItemText, Menu, MenuItem, MenuList, Tooltip } from "@mui/material";
+import React, { useRef } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { setIsFileMenu, setUploadingLoader } from "../../redux/reducers/misc";
 import {
-  Delete as DeleteIcon,
-  ExitToApp as ExitToAppIcon,
+  AudioFile as AudioFileIcon,
+  Image as ImageIcon,
+  UploadFile as UploadFileIcon,
+  VideoFile as VideoFileIcon,
 } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
-import { useAsyncMutation } from "../../hooks/hook";
-import {
-  useDeleteChatMutation,
-  useLeaveGroupMutation,
-} from "../../redux/api/api";
+import toast from "react-hot-toast";
+import { useSendAttachmentsMutation } from "../../redux/api/api";
 
-const DeleteChatMenu = ({ dispatch, deleteMenuAnchor }) => {
-  const navigate = useNavigate();
+const FileMenu = ({ anchorE1, chatId }) => {
+  const { isFileMenu } = useSelector((state) => state.misc);
 
-  const { isDeleteMenu, selectedDeleteChat } = useSelector(
-    (state) => state.misc
-  );
+  const dispatch = useDispatch();
 
-  const [deleteChat, _, deleteChatData] = useAsyncMutation(
-    useDeleteChatMutation
-  );
+  const imageRef = useRef(null);
+  const audioRef = useRef(null);
+  const videoRef = useRef(null);
+  const fileRef = useRef(null);
 
-  const [leaveGroup, __, leaveGroupData] = useAsyncMutation(
-    useLeaveGroupMutation
-  );
+  const [sendAttachments] = useSendAttachmentsMutation();
 
-  const isGroup = selectedDeleteChat.groupChat;
+  const closeFileMenu = () => dispatch(setIsFileMenu(false));
 
-  const closeHandler = () => {
-    dispatch(setIsDeleteMenu(false));
-    deleteMenuAnchor.current = null;
+  const selectImage = () => imageRef.current?.click();
+  const selectAudio = () => audioRef.current?.click();
+  const selectVideo = () => videoRef.current?.click();
+  const selectFile = () => fileRef.current?.click();
+
+  const fileChangeHandler = async (e, key) => {
+    const files = Array.from(e.target.files);
+
+    if (files.length <= 0) return;
+
+    if (files.length > 5)
+      return toast.error(`You can only send 5 ${key} at a time`);
+
+    dispatch(setUploadingLoader(true));
+
+    const toastId = toast.loading(`Sending ${key}...`);
+    closeFileMenu();
+
+    try {
+      const myForm = new FormData();
+
+      myForm.append("chatId", chatId);
+      files.forEach((file) => myForm.append("files", file));
+
+      const res = await sendAttachments(myForm);
+
+      if (res.data) toast.success(`${key} sent successfully`, { id: toastId });
+      else toast.error(`Failed to send ${key}`, { id: toastId });
+
+      // Fetching Here
+    } catch (error) {
+      toast.error(error, { id: toastId });
+    } finally {
+      dispatch(setUploadingLoader(false));
+    }
   };
-
-  const leaveGroupHandler = () => {
-    closeHandler();
-    leaveGroup("Leaving Group...", selectedDeleteChat.chatId);
-  };
-
-  const deleteChatHandler = () => {
-    closeHandler();
-    deleteChat("Deleting Chat...", selectedDeleteChat.chatId);
-  };
-
-  useEffect(() => {
-    if (deleteChatData || leaveGroupData) navigate("/");
-  }, [deleteChatData, leaveGroupData]);
 
   return (
-    <Menu
-      open={isDeleteMenu}
-      onClose={closeHandler}
-      anchorEl={deleteMenuAnchor.current}
-      anchorOrigin={{
-        vertical: "bottom",
-        horizontal: "right",
-      }}
-      transformOrigin={{
-        vertical: "center",
-        horizontal: "center",
-      }}
-    >
-      <Stack
-        sx={{
+    <Menu anchorEl={anchorE1} open={isFileMenu} onClose={closeFileMenu}>
+      <div
+        style={{
           width: "10rem",
-          padding: "0.5rem",
-          cursor: "pointer",
         }}
-        direction={"row"}
-        alignItems={"center"}
-        spacing={"0.5rem"}
-        onClick={isGroup ? leaveGroupHandler : deleteChatHandler}
       >
-        {isGroup ? (
-          <>
-            <ExitToAppIcon />
-            <Typography>Leave Group</Typography>
-          </>
-        ) : (
-          <>
-            <DeleteIcon />
-            <Typography>Delete Chat</Typography>
-          </>
-        )}
-      </Stack>
+        <MenuList>
+          <MenuItem onClick={selectImage}>
+            <Tooltip title="Image">
+              <ImageIcon />
+            </Tooltip>
+            <ListItemText style={{ marginLeft: "0.5rem" }}>Image</ListItemText>
+            <input
+              type="file"
+              multiple
+              accept="image/png, image/jpeg, image/gif"
+              style={{ display: "none" }}
+              onChange={(e) => fileChangeHandler(e, "Images")}
+              ref={imageRef}
+            />
+          </MenuItem>
+
+          <MenuItem onClick={selectAudio}>
+            <Tooltip title="Audio">
+              <AudioFileIcon />
+            </Tooltip>
+            <ListItemText style={{ marginLeft: "0.5rem" }}>Audio</ListItemText>
+            <input
+              type="file"
+              multiple
+              accept="audio/mpeg, audio/wav"
+              style={{ display: "none" }}
+              onChange={(e) => fileChangeHandler(e, "Audios")}
+              ref={audioRef}
+            />
+          </MenuItem>
+
+          <MenuItem onClick={selectVideo}>
+            <Tooltip title="Video">
+              <VideoFileIcon />
+            </Tooltip>
+            <ListItemText style={{ marginLeft: "0.5rem" }}>Video</ListItemText>
+            <input
+              type="file"
+              multiple
+              accept="video/mp4, video/webm, video/ogg"
+              style={{ display: "none" }}
+              onChange={(e) => fileChangeHandler(e, "Videos")}
+              ref={videoRef}
+            />
+          </MenuItem>
+
+          <MenuItem onClick={selectFile}>
+            <Tooltip title="File">
+              <UploadFileIcon />
+            </Tooltip>
+            <ListItemText style={{ marginLeft: "0.5rem" }}>File</ListItemText>
+            <input
+              type="file"
+              multiple
+              accept="*"
+              style={{ display: "none" }}
+              onChange={(e) => fileChangeHandler(e, "Files")}
+              ref={fileRef}
+            />
+          </MenuItem>
+        </MenuList>
+      </div>
     </Menu>
   );
 };
 
-export default DeleteChatMenu;
+export default FileMenu;

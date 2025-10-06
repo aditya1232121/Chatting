@@ -20,37 +20,35 @@ import {
 import { isAuthenticated } from "../middlewares/auth.js";
 import { singleAvatar } from "../middlewares/multer.js";
 
-const app = express.Router();
+const router = express.Router();
 
-app.post("/new", singleAvatar, registerValidator(), validateHandler, newUser);
-app.post("/login", loginValidator(), validateHandler, login);
+// Public routes
+router.post("/new", singleAvatar, registerValidator(), validateHandler, newUser);
+router.post("/login", loginValidator(), validateHandler, login);
 
-// After here user must be logged in to access the routes
+// Auth-protected routes
+router.use(isAuthenticated);
 
-app.use(isAuthenticated);
+router.get("/me", getMyProfile);
+router.get("/logout", logout);
+router.get("/search", searchUser);
 
-app.get("/me", getMyProfile);
-
-app.get("/logout", logout);
-
-app.get("/search", searchUser);
-
-app.put(
+router.put(
   "/sendrequest",
   sendRequestValidator(),
   validateHandler,
   sendFriendRequest
 );
 
-app.put(
+router.put(
   "/acceptrequest",
   acceptRequestValidator(),
   validateHandler,
   acceptFriendRequest
 );
 
-app.get("/notifications", getMyNotifications);
+router.get("/notifications", getMyNotifications);
+router.get("/friends", getMyFriends);
 
-app.get("/friends", getMyFriends);
-
-export default app;
+// ✅ Export router as default
+export default router;

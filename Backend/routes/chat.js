@@ -24,46 +24,40 @@ import {
 import { isAuthenticated } from "../middlewares/auth.js";
 import { attachmentsMulter } from "../middlewares/multer.js";
 
-const app = express.Router();
+const router = express.Router();
 
-// After here user must be logged in to access the routes
+// Require authentication for all routes
+router.use(isAuthenticated);
 
-app.use(isAuthenticated);
-
-app.post("/new", newGroupValidator(), validateHandler, newGroupChat);
-
-app.get("/my", getMyChats);
-
-app.get("/my/groups", getMyGroups);
-
-app.put("/addmembers", addMemberValidator(), validateHandler, addMembers);
-
-app.put(
+// Group routes
+router.post("/new", newGroupValidator(), validateHandler, newGroupChat);
+router.get("/my", getMyChats);
+router.get("/my/groups", getMyGroups);
+router.put("/addmembers", addMemberValidator(), validateHandler, addMembers);
+router.put(
   "/removemember",
   removeMemberValidator(),
   validateHandler,
   removeMember
 );
+router.delete("/leave/:id", chatIdValidator(), validateHandler, leaveGroup);
 
-app.delete("/leave/:id", chatIdValidator(), validateHandler, leaveGroup);
-
-// Send Attachments
-app.post(
+// Messages
+router.post(
   "/message",
   attachmentsMulter,
   sendAttachmentsValidator(),
   validateHandler,
   sendAttachments
 );
+router.get("/message/:id", chatIdValidator(), validateHandler, getMessages);
 
-// Get Messages
-app.get("/message/:id", chatIdValidator(), validateHandler, getMessages);
-
-// Get Chat Details, rename,delete
-app
+// Chat details
+router
   .route("/:id")
   .get(chatIdValidator(), validateHandler, getChatDetails)
   .put(renameValidator(), validateHandler, renameGroup)
   .delete(chatIdValidator(), validateHandler, deleteChat);
 
-export default app;
+// ✅ Export router as default
+export default router;
